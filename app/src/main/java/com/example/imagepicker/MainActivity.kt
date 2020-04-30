@@ -1,40 +1,49 @@
 package com.example.imagepicker
 
 import android.app.Activity
-import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
-import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.example.imagepicker.adapters.ImagePickerAdapter
+import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.custom_dialog.view.*
-import java.util.jar.Manifest
 
 class MainActivity : AppCompatActivity() {
 
     var image_uri: Uri? = null
-
+    private val fileListName: MutableList<String>? = null
+    lateinit var alertDialog :AlertDialog
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val dialogBtn=findViewById(R.id.button_id) as Button
 
-        dialogBtn.setOnClickListener(View.OnClickListener {
+        recycler_id.layoutManager=LinearLayoutManager(this)
+        recycler_id.adapter=ImagePickerAdapter(fileListName,this@MainActivity)
+
+
+//        val dialogBtn=findViewById(R.id.button_id) as Button
+
+        button_id.setOnClickListener(View.OnClickListener {
 
             val customDialog=LayoutInflater.from(this).inflate(R.layout.custom_dialog,null);
 
             val dialogBuilder=AlertDialog.Builder(this).setView(customDialog).setTitle("Picker")
 
-            var alertDialog=dialogBuilder.show();
+           alertDialog=dialogBuilder.show();
 
             customDialog.gallery_pickerId.setOnClickListener {
 
@@ -137,18 +146,48 @@ class MainActivity : AppCompatActivity() {
 
                 var totalItem= data?.clipData?.itemCount
                 Log.d("totalitem", totalItem.toString())
-                var i=0
-                  while(i>= totalItem!!){
-                      if (data != null) {
-                          Log.d("image", data.clipData?.getItemAt(i).toString())
-                      }
-                      i++
-                  }
-//            Log.d("image", data?.data.toString())
+
+               for(i in 0..(totalItem?.minus(1))!!){
+                   Log.d("image1", data?.clipData?.getItemAt(i).toString())
+                   val uri = data!!.clipData!!.getItemAt(i).uri
+
+                   val fileName = getFileName(uri)
+
+                   if (fileName != null) {
+                       fileListName?.add(fileName)
+                   }
+
+               }
+
+            recycler_id.adapter?.notifyDataSetChanged()
+            alertDialog.dismiss();
 
         }else if(resultCode == Activity.RESULT_OK && requestCode== CAMERA_PICK_CODE){
             Log.d("camera", data?.data.toString())
         }
+    }
+
+    //get the image Name
+    fun getFileName(uri: Uri): String? {
+        var result: String? = null
+        if (uri.scheme == "content") {
+            val cursor =
+                contentResolver.query(uri, null, null, null, null)
+            try {
+                if (cursor != null && cursor.moveToFirst()) {
+                    result = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME))
+                }
+            } finally {
+                cursor!!.close()
+            }
+        } else if (result == null) {
+            result = uri.path
+            val cut = result!!.lastIndexOf('/')
+            if (cut != 1) {
+                result = result.substring(cut + 1)
+            }
+        }
+        return result
     }
 
 }
